@@ -130,8 +130,10 @@ activity.
 ## Accounts and removal
 
 Add an Antigravity provider instance for each Google account in
-**Settings > Providers** on web or desktop. Each has its own sign-in; downloaded
-runtimes are shared on the environment.
+**Settings > Providers** on web or desktop. Enable **Isolate Google sign-in**
+so the instance stores credentials in its own profile instead of the system
+keyring, allowing multiple accounts to run concurrently. Downloaded runtimes
+are shared on the environment.
 
 | Action                    | Effect                                                            |
 | ------------------------- | ----------------------------------------------------------------- |

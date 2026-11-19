@@ -149,6 +149,7 @@ export const AntigravityDriver: ProviderDriver<
       apiKey: settingsSecretLiteral(settings.apiKey),
       gcpProject: settings.gcpProject,
       gcpLocation: settings.gcpLocation,
+      isolateAccount: settings.isolateAccount,
     };
     const authConfigIssue = antigravityAuthConfigIssue(auth);
     const processEnvironment = yield* mergeProviderInstanceEnvironment(environment);
@@ -438,6 +439,7 @@ export const AntigravityDriver: ProviderDriver<
     const usage = yield* makeAntigravityUsageProbe({
       profileDirectory,
       authMethod: auth.authMethod,
+      isolateAccount: settings.isolateAccount,
     }).pipe(
       Effect.provideService(FileSystem.FileSystem, fileSystem),
       Effect.provideService(Path.Path, path),

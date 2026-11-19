@@ -95,6 +95,7 @@ export interface AntigravityAuthConfig {
   readonly apiKey: string;
   readonly gcpProject: string;
   readonly gcpLocation: string;
+  readonly isolateAccount?: boolean;
 }
 
 const ANTIGRAVITY_PERSONAL_AUTH: AntigravityAuthConfig = {
@@ -218,9 +219,14 @@ function antigravityEnvironment(
         : {};
   // Each launch unpacks about 1 GB; use T3-owned temp so the driver can reclaim files after force-kill.
   const tempDirectory = runtimeTempDirectory ?? profile.tempDirectory;
+  const isolatedAccountEnv =
+    auth.isolateAccount && !baseEnv.SSH_CONNECTION
+      ? { SSH_CONNECTION: "127.0.0.1 0 127.0.0.1 0" }
+      : {};
   return {
     ...environment,
     ...credential,
+    ...isolatedAccountEnv,
     ...(profile.caBundlePath !== undefined &&
     baseEnv.SSL_CERT_FILE === undefined &&
     baseEnv.SSL_CERT_DIR === undefined

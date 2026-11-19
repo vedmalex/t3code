@@ -129,6 +129,40 @@ describe("Antigravity process environment", () => {
     expect(spawn.env).toMatchObject({ GEMINI_HOME: profile.geminiHome, PATH: "/usr/bin" });
   });
 
+  it("sets SSH_CONNECTION when isolateAccount is enabled to bypass keyring", () => {
+    const spawnIsolated = buildAntigravityAcpSpawnInput({
+      installation: { executablePath: "/usr/bin/agy", harnessPath: null },
+      profile,
+      cwd: "/project",
+      baseEnv: { PATH: "/usr/bin" },
+      auth: {
+        authMethod: "oauth-personal",
+        apiKey: "",
+        gcpProject: "",
+        gcpLocation: "",
+        isolateAccount: true,
+      },
+    });
+
+    expect(spawnIsolated.env?.SSH_CONNECTION).toBe("127.0.0.1 0 127.0.0.1 0");
+
+    const spawnDefault = buildAntigravityAcpSpawnInput({
+      installation: { executablePath: "/usr/bin/agy", harnessPath: null },
+      profile,
+      cwd: "/project",
+      baseEnv: { PATH: "/usr/bin" },
+      auth: {
+        authMethod: "oauth-personal",
+        apiKey: "",
+        gcpProject: "",
+        gcpLocation: "",
+        isolateAccount: false,
+      },
+    });
+
+    expect(spawnDefault.env?.SSH_CONNECTION).toBeUndefined();
+  });
+
   it("passes only the configured method's credential and keeps the GCP pair out of the environment", () => {
     const baseEnv = { PATH: "/usr/bin", GOOGLE_API_KEY: "ambient-key" };
     const spawnFor = (auth: AntigravityAuthConfig) =>

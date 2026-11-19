@@ -73,6 +73,7 @@ const fixture = Effect.fn("AntigravityUsageTest.fixture")(function* (
   const profileDirectory = yield* fs.makeTempDirectoryScoped();
   yield* fs.makeDirectory(path.join(profileDirectory, "antigravity-acp"));
   const tokenPath = path.join(profileDirectory, "antigravity-acp", "acp_token.json");
+  const cliTokenPath = path.join(profileDirectory, "antigravity-acp", "antigravity-oauth-token");
   const writeToken = (refreshToken: string) =>
     fs.writeFileString(
       tokenPath,
@@ -81,6 +82,18 @@ const fixture = Effect.fn("AntigravityUsageTest.fixture")(function* (
         client_secret: "client-secret",
         refresh_token: refreshToken,
         project_id: "project-id",
+      }),
+    );
+  const writeCliToken = (accessToken: string, expiry?: string) =>
+    fs.writeFileString(
+      cliTokenPath,
+      JSON.stringify({
+        token: {
+          access_token: accessToken,
+          refresh_token: "cli-refresh",
+          expiry: expiry ?? "2030-01-01T00:00:00.000Z",
+        },
+        auth_method: "consumer",
       }),
     );
   if (!options.missingToken) yield* writeToken(options.refreshToken ?? "refresh-a");
@@ -111,7 +124,7 @@ const fixture = Effect.fn("AntigravityUsageTest.fixture")(function* (
             : Response.json({}, { status: 403 }),
         );
       }
-      expect(JSON.parse(body)).toEqual({ project: "project-id" });
+      expect(JSON.parse(body)).toEqual(options.missingToken ? {} : { project: "project-id" });
       expect(request.headers["user-agent"]).toMatch(/^antigravity\/hub\/2\.24\.0 /);
       return HttpClientResponse.fromWeb(
         request,
@@ -133,10 +146,21 @@ const fixture = Effect.fn("AntigravityUsageTest.fixture")(function* (
     profileDirectory,
     authMethod: options.authMethod ?? "oauth-personal",
   }).pipe(Effect.provideService(HttpClient.HttpClient, http));
-  return { ...usage, requests, writeToken, tokenPath };
+  return { ...usage, requests, writeToken, writeCliToken, tokenPath, cliTokenPath };
 });
 
 describe("Antigravity subscription limits", () => {
+  it.effect("reads stored token from antigravity-oauth-token when acp_token.json is missing", () =>
+    Effect.gen(function* () {
+      yield* TestClock.setTime(DateTime.toEpochMillis(DateTime.makeUnsafe("2026-10-21T10:16:04Z")));
+      const { probe, writeCliToken } = yield* fixture({ missingToken: true });
+      yield* writeCliToken("access-token", "2026-10-21T11:16:04Z");
+      const limits = yield* probe;
+      expect(limits.unavailable).toBeUndefined();
+      expect(limits.windows.length).toBeGreaterThan(0);
+    }).pipe(Effect.scoped, Effect.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))),
+  );
+
   // Oracle: the 10:16 UTC payload and its narrow Workaround rule.
   it.effect("omits rolling resets for untouched summary buckets and keeps used Gemini resets", () =>
     Effect.gen(function* () {
